@@ -75,3 +75,13 @@ CCC_DRY_RUN=1 ccc use <query>
 - 需设置 `CCC_DIR` 或依赖自动发现 `~/space/claude-code-configs`
 - 无外部依赖，全部使用 Node.js 内置模块（fs / path / os / child_process / net / readline）
 - 所有提示文案和代码注释均为中文
+
+## 发布流程
+
+每次发布必须按顺序完成以下步骤：
+
+1. 更新 `CHANGELOG.md`（在顶部新增版本条目）
+2. 更新 `package.json` 中的 `version` 字段
+3. 提交所有变更（代码 + changelog + version）
+4. `git push origin main`
+5. `npm publish`（需要 OTP，向用户索取验证码）
