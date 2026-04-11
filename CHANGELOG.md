@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0] - 2026-04-11
+
+### Changed
+- 全面重构为 TypeScript（strict 模式 + noUncheckedIndexedAccess）
+- 构建工具链：tsup (esbuild) 打包为单个 CJS dist/cli.js
+- Lint + 格式化：Biome 替代 ESLint + Prettier（单一工具，零配置冲突）
+- 测试：Node 22 内置 node:test 替代 Vitest（零测试依赖，47 个测试）
+- 类型检查：TypeScript 严格模式，tsc --noEmit
+- 命令分发重构为 Map 注册表，替代 switch-case
+- ProxyStartError 类型化错误，替代动态属性挂载
+- getPaths 函数重载，区分 Paths 和 ConfigPaths 返回类型
+- Node 最低版本提升至 22（使用 --experimental-transform-types）
+- devDependencies 精简至 4 个（typescript, tsup, @biomejs/biome, @types/node）
+
 ## [0.3.2] - 2026-04-11
 
 ### Improved
