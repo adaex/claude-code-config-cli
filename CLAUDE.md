@@ -15,6 +15,7 @@ src/
     use.ts              ccc use <query>（含 resolveConfig + readline prompt）
     save.ts             ccc save
     update.ts           ccc update
+    sync.ts             ccc sync（git pull + auto-commit + push）
     log.ts              ccc log
     help.ts             ccc help
   lib/
@@ -26,6 +27,7 @@ src/
     backup.ts           stableStringify / hasDrift / createBackup
     proxy.ts            ProxyStartError / startProxy / stopProxy / waitForPort
     apply.ts            applyConfig(cccDir, configName, isDryRun) — 核心流程
+    git.ts              gitExec / getGitStatus / gitPull / gitAutoCommit / gitPush / autoCloneIfNeeded
     logger.ts           颜色常量 c + info / warn / error / success / dim / dryRun
 tests/
   fuzzy.test.ts         fuzzyMatch / filterConfigs
@@ -34,6 +36,7 @@ tests/
   paths.test.ts         getPaths / ensureRuntimeDirs
   state.test.ts         readState / writeState / isPidAlive
   discovery.test.ts     discoverCccDir
+  git.test.ts           gitExec / getGitStatus / gitAutoCommit
 dist/                   tsup 构建输出（gitignored）
   cli.js                单文件 CJS bundle，含 shebang
 ```
@@ -77,6 +80,9 @@ ccc                    # 列出所有配置，标注当前激活 + 代理状态
 ccc status             # 当前配置名、代理 PID/端口/存活
 ccc use <query>        # 模糊切换，e.g. s2c → seed-2-0-code
 ccc save               # 将 ~/.claude/settings.json 保存回当前激活配置
+ccc sync               # 同步配置仓库（先 pull 再 auto-commit + push）
+ccc sync --pull        # 仅拉取远程变更
+ccc sync --push        # 仅提交并推送本地变更
 ccc use <query> --dry-run
 CCC_DRY_RUN=1 ccc use <query>
 ```

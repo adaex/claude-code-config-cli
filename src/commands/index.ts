@@ -4,6 +4,7 @@ import { cmdList } from './list.ts'
 import { cmdLog } from './log.ts'
 import { cmdSave } from './save.ts'
 import { cmdStatus } from './status.ts'
+import { cmdSync } from './sync.ts'
 import { cmdUpdate } from './update.ts'
 import { cmdUse } from './use.ts'
 
@@ -13,6 +14,7 @@ export const commands = new Map<string, CommandHandler>([
   ['use', cmdUse],
   ['save', cmdSave],
   ['update', cmdUpdate],
+  ['sync', cmdSync],
   ['log', cmdLog],
   ['help', cmdHelp],
   ['--help', cmdHelp],

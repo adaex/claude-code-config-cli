@@ -10,12 +10,15 @@ export function cmdHelp(_ctx: CommandContext): void {
   status           查看当前激活的配置
   use <名称>       切换配置（支持模糊匹配）
   save             将当前 settings.json 保存回激活配置
+  sync             同步配置仓库（pull + push）
   log              实时查看当前代理日志（需代理运行中）
   update           从 npm 更新到最新版本
   help             显示此帮助信息
 
 选项：
   --dry-run        演练模式：不修改真实配置，代理端口 +10000
+  --pull           仅拉取远程变更（用于 sync）
+  --push           仅提交并推送本地变更（用于 sync）
 
 环境变量：
   CCC_DIR          配置根目录路径

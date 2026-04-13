@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.0] - 2026-04-13
+
+### Added
+- `ccc sync` — 同步配置仓库（git pull + auto-commit + push）
+- `ccc sync --pull` — 仅拉取远程变更
+- `ccc sync --push` — 仅提交并推送本地变更
+- 自动克隆：用户名为 aex/adaex 时若配置仓库不存在则自动 clone
+- sync 前自动检查 git 状态（分支、未提交变更、ahead/behind）
+
 ## [0.4.0] - 2026-04-11
 
 ### Changed
