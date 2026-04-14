@@ -65,7 +65,9 @@ async function proxyStart(name: string): Promise<void> {
   const p = getProxyPaths(name)
 
   if (state.pid !== null && isPidAlive(state.pid)) {
-    success(`${name} · http://127.0.0.1:${state.port} · 代理运行中 (PID ${state.pid})`)
+    console.log(
+      `${c.GREEN}✓${c.RESET} ${c.CYAN}${name}${c.RESET} ${c.DIM}·${c.RESET} ${c.DIM}http://127.0.0.1:${state.port}${c.RESET} ${c.DIM}·${c.RESET} ${c.GREEN}代理运行中${c.RESET} ${c.DIM}(PID ${state.pid})${c.RESET}`,
+    )
     return
   }
 
@@ -86,8 +88,9 @@ async function proxyStart(name: string): Promise<void> {
     console.log()
 
     if (portResult.ready) {
-      console.log()
-      success(`${name} · http://127.0.0.1:${port} · 代理已就绪 (PID ${result.pid})`)
+      console.log(
+        `${c.GREEN}✓${c.RESET} ${c.CYAN}${name}${c.RESET} ${c.DIM}·${c.RESET} ${c.DIM}http://127.0.0.1:${port}${c.RESET} ${c.DIM}·${c.RESET} ${c.GREEN}代理已就绪${c.RESET} ${c.DIM}(PID ${result.pid})${c.RESET}`,
+      )
     } else {
       warn(`${name} 未响应端口 ${port}（等待超时 10s）`)
       dim(`查看日志：${result.logFile}`)

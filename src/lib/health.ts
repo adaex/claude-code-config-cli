@@ -1,4 +1,4 @@
-import { c, dim, error, showLogTail, success, warn } from './logger.ts'
+import { c, dim, error, showLogTail, warn } from './logger.ts'
 import { ensureProxyDirs } from './paths.ts'
 import { ProxyStartError, startProxy, waitForPort } from './proxy.ts'
 import { isPidAlive, readProxyState, resolvePort, writeProxyState } from './state.ts'
@@ -22,7 +22,6 @@ export async function ensureProxy(proxyName: string): Promise<EnsureProxyResult 
 
   ensureProxyDirs(proxyName)
 
-  console.log()
   warn(`${proxyName} 已停止，正在重启…`)
 
   try {
@@ -34,7 +33,9 @@ export async function ensureProxy(proxyName: string): Promise<EnsureProxyResult 
     console.log()
 
     if (portResult.ready) {
-      success(`${proxyName} · http://127.0.0.1:${port} · 代理已就绪 (PID ${result.pid})`)
+      console.log(
+        `${c.GREEN}✓${c.RESET} ${c.CYAN}${proxyName}${c.RESET} ${c.DIM}·${c.RESET} ${c.DIM}http://127.0.0.1:${port}${c.RESET} ${c.DIM}·${c.RESET} ${c.GREEN}代理已就绪${c.RESET} ${c.DIM}(PID ${result.pid})${c.RESET}`,
+      )
     } else {
       warn(`${proxyName} 未响应端口 ${port}（等待超时 10s）`)
       dim(`查看日志：${result.logFile}`)
