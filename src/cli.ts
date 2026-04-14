@@ -2,7 +2,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { cmdHelp } from './commands/help.js'
 import { commands } from './commands/index.js'
-import { discoverCccDir } from './lib/discovery.js'
 import { error } from './lib/logger.js'
 
 function getVersion(): string {
@@ -19,27 +18,26 @@ async function main(): Promise<void> {
     return
   }
 
-  const isDryRun = args.includes('--dry-run') || process.env.CCC_DRY_RUN === '1'
-  const filteredArgs = args.filter((a) => a !== '--dry-run')
-  const [command, ...rest] = filteredArgs
+  const [command, ...rest] = args
 
   if (command === 'version') {
     console.log(getVersion())
     return
   }
 
-  const handler = commands.get(command ?? 'list')
+  if (!command) {
+    cmdHelp({ args: [] })
+    return
+  }
+
+  const handler = commands.get(command)
   if (!handler) {
     error(`未知命令：${command}`)
-    cmdHelp({ args: [], isDryRun: false, cccDir: () => '' })
+    cmdHelp({ args: [] })
     process.exit(1)
   }
 
-  await handler({
-    args: rest,
-    isDryRun,
-    cccDir: () => discoverCccDir(),
-  })
+  await handler({ args: rest })
 }
 
 main().catch((e: unknown) => {

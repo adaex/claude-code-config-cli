@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
 import type { PortResult, ProxyStartResult, StopResult } from '../types.ts'
-import { getPaths } from './paths.ts'
+import { ensureProxyDirs, getProxyPaths } from './paths.ts'
 import { isPidAlive } from './state.ts'
 
 function sleep(ms: number): Promise<void> {
@@ -53,21 +53,22 @@ export async function waitForPort(port: number, timeoutMs = 10000): Promise<Port
   return { ready: false, attempts: attempt }
 }
 
-/** 后台启动代理进程，日志写入 runtime/logs/ */
-export function startProxy(cccDir: string, configName: string, port: number, ts: string): Promise<ProxyStartResult> {
+/** 后台启动代理进程，日志写入 ~/.ccc/proxies/<name>/logs/ */
+export function startProxy(proxyName: string, port: number): Promise<ProxyStartResult> {
   return new Promise((resolve, reject) => {
-    const p = getPaths(cccDir, configName)
-    const logFile = path.join(p.logsDir, `${configName}-${ts}.log`)
+    const p = getProxyPaths(proxyName)
+    ensureProxyDirs(proxyName)
 
-    fs.mkdirSync(path.dirname(logFile), { recursive: true })
+    const ts = new Date().toISOString().replace(/[:.]/g, '-')
+    const logFile = path.join(p.logsDir, `${ts}.log`)
     const logFd = fs.openSync(logFile, 'a')
     let settled = false
 
-    const child = spawn('bash', [p.configProxyStart], {
+    const child = spawn('bash', [p.sourceStartSh], {
       detached: true,
       stdio: ['ignore', logFd, logFd],
       env: { ...process.env, PORT: String(port) },
-      cwd: p.configProxy,
+      cwd: p.runtimeDir,
     })
 
     function finish(err?: Error): void {

@@ -1,6 +1,6 @@
 # claude-code-config-cli (ccc)
 
-零运行时依赖的 TypeScript CLI，管理 Claude Code 配置文件切换（settings.json + 代理生命周期）。
+零运行时依赖的 TypeScript CLI，管理 Claude Code 本地代理生命周期。
 
 ## 项目结构
 
@@ -10,89 +10,78 @@ src/
   cli.ts                入口：参数解析 + 命令分发（Map<string, CommandHandler>）
   commands/
     index.ts            命令注册表
-    list.ts             ccc list（默认）
-    status.ts           ccc status
-    use.ts              ccc use <query>（含 resolveConfig + readline prompt）
-    save.ts             ccc save
-    update.ts           ccc update
-    sync.ts             ccc sync（git pull + auto-commit + push）
-    log.ts              ccc log
+    proxy.ts            ccc proxy start|stop|status|install [名称]
     help.ts             ccc help
   lib/
-    paths.ts            getPaths（函数重载：Paths / ConfigPaths）、ensureRuntimeDirs
-    discovery.ts        CCC_DIR 自动发现（CCC_DIR env → ~/.ccc → ~/code/… → ~/space/…）
-    configs.ts          listConfigs / readConfigSettings / hasProxy / extractLocalPort / extractConfigSummary
-    fuzzy.ts            fzf 风格子序列匹配，filterConfigs(query, names)
-    state.ts            runtime/state.json 读写，isPidAlive(pid)
-    backup.ts           stableStringify / hasDrift / createBackup
+    paths.ts            getProxyPaths / listProxyNames / loadProxyDefinition / ensureProxyDirs
+    state.ts            readProxyState / writeProxyState / isPidAlive
     proxy.ts            ProxyStartError / startProxy / stopProxy / waitForPort
-    apply.ts            applyConfig(cccDir, configName, isDryRun) — 核心流程
-    git.ts              gitExec / getGitStatus / gitPull / gitAutoCommit / gitPush / autoCloneIfNeeded
+    health.ts           ensureProxy（自动重启）
     logger.ts           颜色常量 c + info / warn / error / success / dim / dryRun
+proxies/
+  coco/
+    proxy.json          代理元数据（名称、默认端口）
+    start.sh            后台启动脚本（接受 PORT 环境变量）
+    install.sh          安装脚本（创建 venv、安装依赖、复制配置）
+    config.yaml         LiteLLM 代理配置
 tests/
-  fuzzy.test.ts         fuzzyMatch / filterConfigs
-  backup.test.ts        stableStringify
-  configs.test.ts       extractLocalPort / extractConfigSummary
-  paths.test.ts         getPaths / ensureRuntimeDirs
-  state.test.ts         readState / writeState / isPidAlive
-  discovery.test.ts     discoverCccDir
-  git.test.ts           gitExec / getGitStatus / gitAutoCommit
+  paths.test.ts         getProxyPaths / listProxyNames
+  state.test.ts         isPidAlive
 dist/                   tsup 构建输出（gitignored）
   cli.js                单文件 CJS bundle，含 shebang
 ```
 
-## 配置根目录
+## 运行时目录
 
-默认 `~/space/claude-code-configs`，结构：
+`~/.ccc/proxies/<名称>/`，结构：
 
 ```
-configs/
-  <name>/
-    settings.json       # Claude Code 配置
-    proxy/              # 可选，存在则自动管理代理
-      start.sh          # 后台启动脚本，接受 PORT 环境变量
-      config.yaml
-runtime/                # 自动创建
-  state.json            # { active, proxyPid, proxyPort, appliedAt }
-  last-applied/<name>/settings.json
-  backups/<ts>-<name>.json
-  logs/<name>-<ts>.log
-  dry-run/settings.json
+~/.ccc/proxies/coco/
+  state.json            # { pid, port, startedAt }
+  config.yaml           # install 时从包内复制
+  .venv/                # install 时创建的 Python 虚拟环境
+  logs/
+    <时间戳>.log
 ```
-
-## ccc use 流程
-
-1. 模糊匹配配置名（子序列，多匹配则要求用户细化）
-2. 检测漂移（`~/.claude/settings.json` vs `last-applied`），有则备份 + 提示
-3. 停旧代理（SIGTERM → 3×500ms 轮询 → SIGKILL）
-4. 写入 `~/.claude/settings.json`（dry-run 写到 `runtime/dry-run/`）
-5. 保存 `last-applied/<name>/settings.json` 快照
-6. 若新配置 `ANTHROPIC_BASE_URL` 是 localhost/127.0.0.1 且有 `proxy/start.sh`：
-   - `spawn('bash', [start.sh], { detached:true })` + `child.unref()`，PORT 由 settings 中端口决定
-   - dry-run 时 PORT +10000（15432 → 25432）
-   - `net.createConnection` 轮询端口，最多 10s，超时警告但继续
-7. 写入 `runtime/state.json`
 
 ## 命令
 
 ```bash
-ccc                    # 列出所有配置，标注当前激活 + 代理状态
-ccc status             # 当前配置名、代理 PID/端口/存活
-ccc use <query>        # 模糊切换，e.g. s2c → seed-2-0-code
-ccc save               # 将 ~/.claude/settings.json 保存回当前激活配置
-ccc sync               # 同步配置仓库（先 pull 再 auto-commit + push）
-ccc sync --pull        # 仅拉取远程变更
-ccc sync --push        # 仅提交并推送本地变更
-ccc use <query> --dry-run
-CCC_DRY_RUN=1 ccc use <query>
+ccc proxy install [名称]   # 安装代理依赖（默认 coco）
+ccc proxy start [名称]     # 启动代理
+ccc proxy stop [名称]      # 停止代理
+ccc proxy status [名称]    # 查看状态（已停止则自动重启）
+ccc help                   # 显示帮助信息
+ccc --version              # 显示版本号
 ```
 
-## dry-run 机制
+## 代理管理流程
 
-- 设置写入 `runtime/dry-run/settings.json`，**不触碰** `~/.claude/settings.json`
-- 代理端口 **+10000**（e.g. 15432 → 25432），**不实际启动**代理进程
-- `state.json` **不更新**，真实状态不受影响
-- dry-run 下停止代理也**不实际执行**（仅打印提示）
+### install
+1. 创建 `~/.ccc/proxies/<名称>/` 和 `logs/` 目录
+2. 从包内 `proxies/<名称>/` 复制 `config.yaml`
+3. 执行 `install.sh`（创建 .venv、安装 litellm 等依赖）
+
+### start
+1. 检查是否已安装（.venv 和 config.yaml 存在）
+2. 若已运行则显示状态并退出
+3. `spawn('bash', [start.sh], { detached:true })` + `child.unref()`
+4. 写入 `state.json`（PID、端口、启动时间）
+5. `net.createConnection` 轮询端口，最多 10s
+
+### stop
+1. 读取 `state.json` 获取 PID
+2. SIGTERM → 3×500ms 轮询 → SIGKILL → 3×200ms 轮询
+3. 更新 `state.json`
+
+### status
+1. 读取 `state.json`，检查 PID 存活
+2. 存活：显示状态行 `✓ coco · http://127.0.0.1:15432 · 代理运行中 (PID xxx)`
+3. 死亡：自动重启（同 start 流程）
+
+## 配置切换
+
+配置切换通过 zsh shell 函数实现（不在 ccc 管理范围内），每个函数导出环境变量后启动 `claude`。详见 `~/.zshrc`。
 
 ## 开发说明
 
@@ -100,7 +89,6 @@ CCC_DRY_RUN=1 ccc use <query>
 - `npm run build` 构建到 `dist/`，`npm run dev` 监听模式
 - `npm run check` 运行 typecheck + lint + test
 - `npm link` 安装全局命令 `ccc`（指向 `dist/cli.js`）
-- 需设置 `CCC_DIR` 或依赖自动发现 `~/space/claude-code-configs`
 - 零运行时依赖，全部使用 Node.js 内置模块
 - 所有提示文案和代码注释均为中文
 

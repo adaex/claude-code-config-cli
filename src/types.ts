@@ -1,53 +1,29 @@
-/** 运行时状态，持久化到 runtime/state.json */
-export interface State {
-  active: string | null
-  proxyPid: number | null
-  proxyPort: number | null
-  appliedAt: string | null
+/** 代理运行时状态，持久化到 ~/.ccc/proxies/<name>/state.json */
+export interface ProxyState {
+  pid: number | null
+  port: number
+  startedAt: string | null
 }
 
-/** 所有计算路径（configName 未提供时 config 相关字段为 null） */
-export interface Paths {
-  configsDir: string
+/** 代理的所有计算路径 */
+export interface ProxyPaths {
+  /** 包内源目录：<package-root>/proxies/<name>/ */
+  sourceDir: string
+  sourceStartSh: string
+  sourceInstallSh: string
+  sourceConfigYaml: string
+  /** 运行时目录：~/.ccc/proxies/<name>/ */
   runtimeDir: string
   stateFile: string
-  lastAppliedDir: string
-  backupsDir: string
   logsDir: string
-  dryRunDir: string
-  dryRunSettings: string
-  claudeSettings: string
-  configDir: string | null
-  configSettings: string | null
-  configProxy: string | null
-  configProxyStart: string | null
-  lastAppliedSettings: string | null
+  venvDir: string
+  runtimeConfigYaml: string
 }
 
-/** 提供了 configName 时的路径，config 相关字段保证非 null */
-export interface ConfigPaths extends Paths {
-  configDir: string
-  configSettings: string
-  configProxy: string
-  configProxyStart: string
-  lastAppliedSettings: string
-}
-
-/** Claude Code settings.json 中与 ccc 相关的字段 */
-export interface ClaudeSettings {
-  env?: {
-    ANTHROPIC_BASE_URL?: string
-    ANTHROPIC_DEFAULT_SONNET_MODEL?: string
-    [key: string]: string | undefined
-  }
-  model?: string
-  [key: string]: unknown
-}
-
-/** 从配置中提取的摘要 */
-export interface ConfigSummary {
-  url: string
-  model: string
+/** 代理元数据（来自 proxy.json） */
+export interface ProxyDefinition {
+  name: string
+  defaultPort: number
 }
 
 /** startProxy 返回值 */
@@ -76,6 +52,4 @@ export type CommandHandler = (ctx: CommandContext) => Promise<void> | void
 /** 传递给每个命令的共享上下文 */
 export interface CommandContext {
   args: string[]
-  isDryRun: boolean
-  cccDir: () => string
 }

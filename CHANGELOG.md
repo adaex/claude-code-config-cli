@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.0.0] - 2026-04-14
+
+### Breaking Changes
+- 移除所有配置切换命令（list、status、use、save、sync、log、update）
+- 不再管理 `~/.claude/settings.json`，配置切换改为 zsh shell 函数
+- 移除 dry-run 模式
+- 运行时目录从外部配置仓库的 `runtime/` 迁移到 `~/.ccc/proxies/<名称>/`
+- 代理配置从外部仓库迁移到包内 `proxies/` 目录
+
+### Added
+- `ccc proxy install [名称]` — 安装代理依赖（创建 venv、复制配置）
+- `ccc proxy start [名称]` — 启动代理
+- `ccc proxy stop [名称]` — 停止代理
+- `ccc proxy status [名称]` — 查看代理状态（已停止则自动重启）
+- 代理名称可省略，默认为 `coco`
+- 内置 `coco` 代理配置（LiteLLM → codebase-api 转发）
+
 ## [0.6.0] - 2026-04-14
 
 ### Added

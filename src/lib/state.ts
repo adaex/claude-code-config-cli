@@ -1,23 +1,26 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import type { State } from '../types.ts'
-import { getPaths } from './paths.ts'
+import type { ProxyState } from '../types.ts'
+import { getProxyPaths, loadProxyDefinition } from './paths.ts'
 
-const DEFAULT_STATE: Readonly<State> = Object.freeze({ active: null, proxyPid: null, proxyPort: null, appliedAt: null })
-
-/** 读取运行时状态，文件不存在或解析失败时返回默认值 */
-export function readState(cccDir: string): State {
-  const stateFile = getPaths(cccDir).stateFile
-  if (!fs.existsSync(stateFile)) return { ...DEFAULT_STATE }
+/** 读取代理运行时状态，文件不存在或解析失败时返回默认值 */
+export function readProxyState(proxyName: string): ProxyState {
+  const { stateFile } = getProxyPaths(proxyName)
+  if (!fs.existsSync(stateFile)) {
+    const def = loadProxyDefinition(proxyName)
+    return { pid: null, port: def.defaultPort, startedAt: null }
+  }
   try {
-    return JSON.parse(fs.readFileSync(stateFile, 'utf8')) as State
+    return JSON.parse(fs.readFileSync(stateFile, 'utf8')) as ProxyState
   } catch {
-    return { ...DEFAULT_STATE }
+    const def = loadProxyDefinition(proxyName)
+    return { pid: null, port: def.defaultPort, startedAt: null }
   }
 }
 
-export function writeState(cccDir: string, state: State): void {
-  const stateFile = getPaths(cccDir).stateFile
+/** 写入代理运行时状态 */
+export function writeProxyState(proxyName: string, state: ProxyState): void {
+  const { stateFile } = getProxyPaths(proxyName)
   fs.mkdirSync(path.dirname(stateFile), { recursive: true })
   fs.writeFileSync(stateFile, `${JSON.stringify(state, null, 2)}\n`)
 }

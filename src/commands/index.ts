@@ -1,21 +1,11 @@
 import type { CommandHandler } from '../types.ts'
 import { cmdHelp } from './help.ts'
-import { cmdList } from './list.ts'
-import { cmdLog } from './log.ts'
-import { cmdSave } from './save.ts'
-import { cmdStatus } from './status.ts'
-import { cmdSync } from './sync.ts'
+import { cmdProxy } from './proxy.ts'
 import { cmdUpdate } from './update.ts'
-import { cmdUse } from './use.ts'
 
 export const commands = new Map<string, CommandHandler>([
-  ['list', cmdList],
-  ['status', cmdStatus],
-  ['use', cmdUse],
-  ['save', cmdSave],
+  ['proxy', cmdProxy],
   ['update', cmdUpdate],
-  ['sync', cmdSync],
-  ['log', cmdLog],
   ['help', cmdHelp],
   ['--help', cmdHelp],
   ['-h', cmdHelp],

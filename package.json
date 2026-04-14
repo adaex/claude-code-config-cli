@@ -1,7 +1,7 @@
 {
   "name": "claude-code-config-cli",
-  "version": "0.6.0",
-  "description": "在多个 Claude Code 配置之间快速切换，自动管理本地代理的启停",
+  "version": "1.0.0",
+  "description": "Claude Code 本地代理生命周期管理工具",
   "keywords": [
     "claude",
     "claude-code",
@@ -19,7 +19,8 @@
     "ccc": "dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "proxies"
   ],
   "scripts": {
     "build": "tsup",

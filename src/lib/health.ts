@@ -1,9 +1,8 @@
 import fs from 'node:fs'
-import { extractLocalPort, hasProxy, readConfigSettings } from './configs.ts'
 import { c, dim, error, success, warn } from './logger.ts'
-import { ensureRuntimeDirs } from './paths.ts'
+import { ensureProxyDirs } from './paths.ts'
 import { ProxyStartError, startProxy, waitForPort } from './proxy.ts'
-import { isPidAlive, readState, writeState } from './state.ts'
+import { isPidAlive, readProxyState, writeProxyState } from './state.ts'
 
 export interface EnsureProxyResult {
   restarted: boolean
@@ -12,27 +11,21 @@ export interface EnsureProxyResult {
 }
 
 /**
- * 检查当前激活配置的代理是否存活，若已停止则自动重启。
+ * 检查代理是否存活，若已停止则自动重启。
  * 返回 null 表示无需操作或重启失败。
  */
-export async function ensureProxy(cccDir: string): Promise<EnsureProxyResult | null> {
-  const state = readState(cccDir)
-  if (!state.active) return null
-  if (!hasProxy(cccDir, state.active)) return null
-  if (state.proxyPid !== null && isPidAlive(state.proxyPid)) return null
+export async function ensureProxy(proxyName: string): Promise<EnsureProxyResult | null> {
+  const state = readProxyState(proxyName)
+  if (state.pid !== null && isPidAlive(state.pid)) return null
 
-  const settings = readConfigSettings(cccDir, state.active)
-  const port = state.proxyPort ?? extractLocalPort(settings)
-  if (!port) return null
-
-  ensureRuntimeDirs(cccDir)
-  const ts = new Date().toISOString().replace(/[:.]/g, '-')
+  const port = state.port
+  ensureProxyDirs(proxyName)
 
   console.log()
   warn('代理已停止，正在自动重启…')
 
   try {
-    const result = await startProxy(cccDir, state.active, port, ts)
+    const result = await startProxy(proxyName, port)
     dim(`PID ${result.pid}  日志 ${result.logFile}`)
 
     process.stdout.write(`${c.CYAN}◆${c.RESET} 等待代理就绪`)
@@ -46,7 +39,7 @@ export async function ensureProxy(cccDir: string): Promise<EnsureProxyResult | n
       dim(`查看日志：${result.logFile}`)
     }
 
-    writeState(cccDir, { ...state, proxyPid: result.pid, proxyPort: port })
+    writeProxyState(proxyName, { pid: result.pid, port, startedAt: new Date().toISOString() })
     return { restarted: true, pid: result.pid, port }
   } catch (e: unknown) {
     const proxyErr = e instanceof ProxyStartError ? e : null

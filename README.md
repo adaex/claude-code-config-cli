@@ -1,6 +1,6 @@
 # ccc — Claude Code Config CLI
 
-在多个 Claude Code 配置之间快速切换，自动管理本地代理的启停。
+Claude Code 本地代理生命周期管理工具。
 
 ## 安装
 
@@ -16,107 +16,77 @@ cd claude-code-config-cli
 npm link
 ```
 
-## 配置目录结构
-
-工具会按顺序查找配置根目录：
-
-1. `$CCC_DIR`（环境变量）
-2. `~/.ccc`
-3. `~/code/claude-code-configs`
-4. `~/space/claude-code-configs`
-
-目录结构如下：
-
-```
-claude-code-configs/
-  configs/
-    my-config/
-      settings.json        # Claude Code 配置文件
-    proxy-config/
-      settings.json        # ANTHROPIC_BASE_URL 为本地地址时自动启动代理
-      proxy/
-        start.sh           # 代理启动脚本（接受 PORT 环境变量）
-        config.yaml
-  runtime/                 # 自动创建，勿手动修改
-    state.json
-    last-applied/
-    backups/
-    logs/
-```
-
-`settings.json` 格式与 `~/.claude/settings.json` 完全一致。当 `ANTHROPIC_BASE_URL` 为 `localhost` 或 `127.0.0.1` 时，切换配置会自动启动 `proxy/start.sh`。
-
 ## 使用
 
 ```bash
-# 列出所有配置，显示当前激活项
-ccc
+# 安装代理依赖（首次使用需执行）
+ccc proxy install coco
 
-# 查看当前配置（单行，适合放入 shell prompt 或 alias）
-ccc status
+# 启动代理
+ccc proxy start coco
 
-# 切换配置（支持模糊匹配，如 s2c → seed-2-0-code）
-ccc use <名称>
+# 查看代理状态（已停止则自动重启）
+ccc proxy status coco
 
-# 演练模式：不修改真实文件，代理端口 +10000
-ccc use <名称> --dry-run
+# 停止代理
+ccc proxy stop coco
 
-# 实时查看当前代理日志（需代理运行中，Ctrl+C 退出）
-ccc log
-
-# 更新到 npm 最新版本（显示当前版本和更新后版本）
-ccc update
-
-# 显示帮助信息
+# 显示帮助
 ccc help
+
+# 显示版本
+ccc --version
 ```
 
-## 演示
+代理名称可省略，默认为 `coco`。
+
+## 配置切换
+
+配置切换通过 zsh shell 函数实现，每个函数导出对应的环境变量后启动 `claude`：
+
+```zsh
+cc-seed() {
+  export ANTHROPIC_AUTH_TOKEN="..."
+  export ANTHROPIC_BASE_URL="https://..."
+  export ANTHROPIC_MODEL="doubao-seed-2.0-code"
+  # ...
+  command claude --permission-mode acceptEdits "$@"
+}
+
+cc-new() {
+  export ANTHROPIC_BASE_URL="http://127.0.0.1:15432"
+  # ...
+  ccc proxy status coco  # 自动检查/重启代理
+  command claude --model opus --permission-mode acceptEdits "$@"
+}
+
+claude() {
+  [[ "$PWD" = "$HOME" ]] && cd ~/space || true
+  cc-new "$@"
+}
+```
+
+这种方式的优势：
+- **Per-session 生效**：环境变量只在当前 shell 生效，多个 claude 进程互不干扰
+- **不修改全局配置**：`~/.claude/settings.json` 保持最简，只含通用设置
+- **即时切换**：不同终端窗口可同时使用不同配置
+
+## 运行时目录
 
 ```
-$ ccc
-
-可用配置
-
-  · seed-2-0-code
-  · seed-dogfooding
-  ✓ proxy-config  代理运行中（端口 15432 · PID 1234）
-
-  › http://127.0.0.1:15432 · claude-sonnet-4-6
-
-$ ccc status
-✓ proxy-config · http://127.0.0.1:15432 · 代理运行中
-
-$ ccc use seed
-
-· 写入配置
-✓ 已写入 ~/.claude/settings.json
-
-✓ 已切换到配置 "seed-2-0-code"
-  › https://api.example.com · doubao-seed-2.0-code
+~/.ccc/proxies/coco/
+  state.json       # 代理状态（PID、端口、启动时间）
+  config.yaml      # LiteLLM 配置（install 时复制）
+  .venv/           # Python 虚拟环境（install 时创建）
+  logs/            # 代理日志
 ```
-
-## 代理管理
-
-- 切换到含本地 URL 的配置时，自动后台启动 `proxy/start.sh`，轮询端口就绪（最多 10 秒）
-- 切换离开时自动停止旧代理（SIGTERM，超时则 SIGKILL）
-- 代理日志写入 `runtime/logs/<配置名>-<时间戳>.log`
-
-## 漂移检测
-
-每次切换后保存配置快照到 `runtime/last-applied/`。下次切换时若 `~/.claude/settings.json` 被手动修改过，自动备份到 `runtime/backups/` 并提示。
-
-## 环境变量
-
-| 变量 | 说明 |
-|------|------|
-| `CCC_DIR` | 指定配置根目录 |
-| `CCC_DRY_RUN=1` | 启用演练模式 |
 
 ## 开发
 
 ```bash
-npm run format   # Prettier 格式化
+npm run check     # typecheck + lint + test
+npm run build     # 构建到 dist/
+npm run dev       # 监听模式
 ```
 
 ## License
