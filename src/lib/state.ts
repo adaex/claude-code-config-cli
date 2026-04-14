@@ -26,9 +26,9 @@ export function resolvePort(state: ProxyState): number | null {
   if (port) return port
   const url = process.env.ANTHROPIC_BASE_URL
   if (!url) {
-    error('未设置 ANTHROPIC_BASE_URL 环境变量，无法确定代理端口')
+    error('未设置 ANTHROPIC_BASE_URL，无法确定代理端口')
   } else {
-    error(`ANTHROPIC_BASE_URL (${url}) 不是本地地址或未指定端口，无需启动代理`)
+    error(`ANTHROPIC_BASE_URL 不是本地地址或未指定端口：${url}`)
   }
   return null
 }

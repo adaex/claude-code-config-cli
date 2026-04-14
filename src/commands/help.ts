@@ -5,9 +5,9 @@ export function cmdHelp(_ctx: CommandContext): void {
 用法：ccc <命令> [选项]
 
 命令：
-  proxy start [名称]     启动代理（默认 coco）
+  proxy use [名称]       确保代理运行（未启动则自动启动）
+  proxy start [名称]     启动代理
   proxy stop [名称]      停止代理
-  proxy status [名称]    查看代理状态（已停止则自动重启）
   proxy install [名称]   安装代理依赖
   backup                 备份代理配置（排除 .venv）
   open                   打开 ~/.ccc 目录

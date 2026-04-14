@@ -30,18 +30,6 @@ export function dim(msg: string): void {
   console.log(`  ${DIM}${msg}${RESET}`)
 }
 
-export function dryRun(msg: string): void {
-  console.log(`  ${DIM}→ ${msg}${RESET}`)
-}
-
-export function dot(): void {
-  process.stdout.write('.')
-}
-
-export function step(msg: string): void {
-  console.log(`\n${msg}`)
-}
-
 /** 显示日志文件前 N 行（用于启动失败诊断） */
 export function showLogTail(logFile: string, maxLines = 20): void {
   try {

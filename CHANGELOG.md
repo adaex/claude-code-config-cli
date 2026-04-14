@@ -4,13 +4,16 @@
 
 ### Added
 - `ccc open` — 打开 ~/.ccc 目录
+- `ccc proxy use` — 确保代理运行（未启动则自动启动），替代 `proxy status`
 
 ### Changed
 - 移除 `proxy.json`，代理端口改为从 `ANTHROPIC_BASE_URL` 环境变量动态解析
-- 非本地地址或未设置环境变量时给出明确错误提示
+- 省略代理名称时：仅一个代理则自动选择，多个则列出可用代理
+- 统一所有提示信息带代理名称，优化错误文案
 - `ProxyState.port` 改为 `number | null`，消除 `0` 哨兵值
-- 提取 `resolvePort` / `showLogTail` 共享函数，消除 proxy.ts 和 health.ts 间的重复代码
-- shell 命令改用 `execFileSync` 参数数组，避免字符串拼接
+- 提取 `resolvePort` / `showLogTail` 共享函数，消除重复代码
+- shell 命令改用 `execFileSync` 参数数组
+- 删除未使用的 `dryRun`、`dot`、`step` 函数
 
 ## [1.1.0] - 2026-04-14
 

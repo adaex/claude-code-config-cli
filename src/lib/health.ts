@@ -23,7 +23,7 @@ export async function ensureProxy(proxyName: string): Promise<EnsureProxyResult 
   ensureProxyDirs(proxyName)
 
   console.log()
-  warn('代理已停止，正在自动重启…')
+  warn(`${proxyName} 已停止，正在重启…`)
 
   try {
     const result = await startProxy(proxyName, port)
@@ -34,9 +34,9 @@ export async function ensureProxy(proxyName: string): Promise<EnsureProxyResult 
     console.log()
 
     if (portResult.ready) {
-      success(`代理已就绪，端口 ${port}`)
+      success(`${proxyName} · http://127.0.0.1:${port} · 代理已就绪 (PID ${result.pid})`)
     } else {
-      warn(`代理 10 秒内未响应端口 ${port}`)
+      warn(`${proxyName} 未响应端口 ${port}（等待超时 10s）`)
       dim(`查看日志：${result.logFile}`)
     }
 

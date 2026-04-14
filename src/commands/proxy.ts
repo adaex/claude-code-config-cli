@@ -8,20 +8,30 @@ import { isPidAlive, readProxyState, resolvePort, writeProxyState } from '../lib
 import type { CommandContext } from '../types.ts'
 
 function resolveProxyName(name: string | undefined): string {
-  const resolved = name ?? 'coco'
-  const p = getProxyPaths(resolved)
-  if (!fs.existsSync(p.startSh)) {
+  if (!name) {
     const available = listProxyNames()
-    error(`未知代理：${resolved}`)
+    if (available.length === 1) return available[0]!
+    error('请指定代理名称')
     if (available.length) {
       dim(`可用代理：${available.join('、')}`)
     } else {
-      dim(`~/.ccc/proxies/ 下没有已配置的代理`)
-      dim(`请先将代理文件（start.sh、config.yaml 等）放入 ~/.ccc/proxies/${resolved}/`)
+      dim('~/.ccc/proxies/ 下没有已配置的代理')
     }
     process.exit(1)
   }
-  return resolved
+  const p = getProxyPaths(name)
+  if (!fs.existsSync(p.startSh)) {
+    const available = listProxyNames()
+    error(`未知代理：${name}`)
+    if (available.length) {
+      dim(`可用代理：${available.join('、')}`)
+    } else {
+      dim('~/.ccc/proxies/ 下没有已配置的代理')
+      dim(`请先将代理文件（start.sh、config.yaml 等）放入 ~/.ccc/proxies/${name}/`)
+    }
+    process.exit(1)
+  }
+  return name
 }
 
 async function proxyInstall(name: string): Promise<void> {
@@ -79,7 +89,7 @@ async function proxyStart(name: string): Promise<void> {
       console.log()
       success(`${name} · http://127.0.0.1:${port} · 代理已就绪 (PID ${result.pid})`)
     } else {
-      warn(`代理 10 秒内未响应端口 ${port}`)
+      warn(`${name} 未响应端口 ${port}（等待超时 10s）`)
       dim(`查看日志：${result.logFile}`)
     }
 
@@ -110,7 +120,7 @@ async function proxyStop(name: string): Promise<void> {
   }
 }
 
-async function proxyStatus(name: string): Promise<void> {
+async function proxyUse(name: string): Promise<void> {
   const p = getProxyPaths(name)
   const state = readProxyState(name)
 
@@ -134,7 +144,7 @@ export async function cmdProxy(ctx: CommandContext): Promise<void> {
   const [subcommand, proxyName] = ctx.args
 
   if (!subcommand) {
-    error('用法：ccc proxy <start|stop|status|install> [名称]')
+    error('用法：ccc proxy <start|stop|use|install> [名称]')
     process.exit(1)
   }
 
@@ -145,13 +155,15 @@ export async function cmdProxy(ctx: CommandContext): Promise<void> {
       return proxyStart(name)
     case 'stop':
       return proxyStop(name)
+    case 'use':
+      return proxyUse(name)
     case 'status':
-      return proxyStatus(name)
+      return proxyUse(name)
     case 'install':
       return proxyInstall(name)
     default:
       error(`未知子命令：${subcommand}`)
-      error('可用：start、stop、status、install')
+      error('可用：start、stop、use、install')
       process.exit(1)
   }
 }
