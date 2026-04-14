@@ -53,7 +53,7 @@ export async function waitForPort(port: number, timeoutMs = 10000): Promise<Port
   return { ready: false, attempts: attempt }
 }
 
-/** 后台启动代理进程，日志写入 ~/.ccc/proxies/<name>/logs/ */
+/** 后台启动代理进程，日志写入 ~/.ccc/logs/<name>/ */
 export function startProxy(proxyName: string, port: number): Promise<ProxyStartResult> {
   return new Promise((resolve, reject) => {
     const p = getProxyPaths(proxyName)
@@ -64,11 +64,11 @@ export function startProxy(proxyName: string, port: number): Promise<ProxyStartR
     const logFd = fs.openSync(logFile, 'a')
     let settled = false
 
-    const child = spawn('bash', [p.sourceStartSh], {
+    const child = spawn('bash', [p.startSh], {
       detached: true,
       stdio: ['ignore', logFd, logFd],
       env: { ...process.env, PORT: String(port) },
-      cwd: p.runtimeDir,
+      cwd: p.dir,
     })
 
     function finish(err?: Error): void {

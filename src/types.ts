@@ -7,17 +7,15 @@ export interface ProxyState {
 
 /** 代理的所有计算路径 */
 export interface ProxyPaths {
-  /** 包内源目录：<package-root>/proxies/<name>/ */
-  sourceDir: string
-  sourceStartSh: string
-  sourceInstallSh: string
-  sourceConfigYaml: string
-  /** 运行时目录：~/.ccc/proxies/<name>/ */
-  runtimeDir: string
+  /** 代理目录：~/.ccc/proxies/<name>/ */
+  dir: string
+  startSh: string
+  installSh: string
+  configYaml: string
   stateFile: string
-  logsDir: string
   venvDir: string
-  runtimeConfigYaml: string
+  /** 日志目录：~/.ccc/logs/<name>/ */
+  logsDir: string
 }
 
 /** 代理元数据（来自 proxy.json） */

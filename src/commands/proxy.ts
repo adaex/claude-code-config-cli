@@ -1,4 +1,3 @@
-import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import { ensureProxy } from '../lib/health.ts'
 import { c, dim, error, info, success, warn } from '../lib/logger.ts'
@@ -9,11 +8,15 @@ import type { CommandContext } from '../types.ts'
 
 function resolveProxyName(name: string | undefined): string {
   const resolved = name ?? 'coco'
-  const available = listProxyNames()
-  if (!available.includes(resolved)) {
+  const p = getProxyPaths(resolved)
+  if (!fs.existsSync(p.startSh)) {
+    const available = listProxyNames()
     error(`未知代理：${resolved}`)
     if (available.length) {
       dim(`可用代理：${available.join('、')}`)
+    } else {
+      dim(`~/.ccc/proxies/ 下没有已配置的代理`)
+      dim(`请先将代理文件（start.sh、config.yaml 等）放入 ~/.ccc/proxies/${resolved}/`)
     }
     process.exit(1)
   }
@@ -23,21 +26,19 @@ function resolveProxyName(name: string | undefined): string {
 async function proxyInstall(name: string): Promise<void> {
   const p = getProxyPaths(name)
 
-  if (!fs.existsSync(p.sourceInstallSh)) {
-    error(`代理 ${name} 没有 install.sh`)
+  if (!fs.existsSync(p.installSh)) {
+    error(`~/.ccc/proxies/${name}/install.sh 不存在`)
+    dim(`请先将安装脚本放入 ${p.dir}/`)
     process.exit(1)
   }
 
   ensureProxyDirs(name)
-  info(`安装代理 ${name} 到 ${p.runtimeDir}`)
+  info(`安装代理 ${name}`)
 
-  execSync(`bash "${p.sourceInstallSh}"`, {
+  const { execSync } = await import('node:child_process')
+  execSync(`bash "${p.installSh}"`, {
     stdio: 'inherit',
-    env: {
-      ...process.env,
-      INSTALL_DIR: p.runtimeDir,
-      SOURCE_DIR: p.sourceDir,
-    },
+    cwd: p.dir,
   })
 
   if (!fs.existsSync(p.venvDir)) {
@@ -50,16 +51,16 @@ async function proxyInstall(name: string): Promise<void> {
 }
 
 async function proxyStart(name: string): Promise<void> {
-  const p = getProxyPaths(name)
   const def = loadProxyDefinition(name)
   const state = readProxyState(name)
+  const p = getProxyPaths(name)
 
   if (state.pid !== null && isPidAlive(state.pid)) {
     success(`${name} · http://127.0.0.1:${state.port} · 代理运行中 (PID ${state.pid})`)
     return
   }
 
-  if (!fs.existsSync(p.runtimeConfigYaml) || !fs.existsSync(p.venvDir)) {
+  if (!fs.existsSync(p.venvDir)) {
     error(`代理 ${name} 未安装，请先执行 ccc proxy install ${name}`)
     process.exit(1)
   }
@@ -129,7 +130,7 @@ async function proxyStatus(name: string): Promise<void> {
   const p = getProxyPaths(name)
   const state = readProxyState(name)
 
-  if (!fs.existsSync(p.runtimeConfigYaml) || !fs.existsSync(p.venvDir)) {
+  if (!fs.existsSync(p.venvDir)) {
     dim(`${name} · 未安装`)
     return
   }
@@ -153,7 +154,7 @@ export async function cmdProxy(ctx: CommandContext): Promise<void> {
     process.exit(1)
   }
 
-  const name = resolveProxyName(subcommand === 'install' ? proxyName : proxyName)
+  const name = resolveProxyName(proxyName)
 
   switch (subcommand) {
     case 'start':

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1] - 2026-04-14
+
+### Changed
+- 代理配置文件（start.sh、config.yaml 等）从包内移除，改为用户自行管理 `~/.ccc/proxies/<名称>/`
+- 日志目录从 `~/.ccc/proxies/<名称>/logs/` 迁移到 `~/.ccc/logs/<名称>/`
+- npm 包不再包含敏感的内网代理配置
+
 ## [1.0.0] - 2026-04-14
 
 ### Breaking Changes
