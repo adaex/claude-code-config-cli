@@ -30,6 +30,12 @@ export function dim(msg: string): void {
   console.log(`  ${DIM}${msg}${RESET}`)
 }
 
+export function proxyStatus(name: string, port: number, pid: number, label: string): void {
+  console.log(
+    `${GREEN}✓${RESET} ${CYAN}${name}${RESET} ${DIM}·${RESET} ${DIM}http://127.0.0.1:${port}${RESET} ${DIM}·${RESET} ${GREEN}${label}${RESET} ${DIM}(PID ${pid})${RESET}`,
+  )
+}
+
 /** 显示日志文件前 N 行（用于启动失败诊断） */
 export function showLogTail(logFile: string, maxLines = 20): void {
   try {

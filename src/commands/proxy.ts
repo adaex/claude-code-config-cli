@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import { ensureProxy } from '../lib/health.ts'
-import { c, dim, error, info, showLogTail, success, warn } from '../lib/logger.ts'
+import { c, dim, error, info, proxyStatus, showLogTail, success, warn } from '../lib/logger.ts'
 import { ensureProxyDirs, getProxyPaths, listProxyNames } from '../lib/paths.ts'
 import { ProxyStartError, startProxy, stopProxy, waitForPort } from '../lib/proxy.ts'
 import { isPidAlive, readProxyState, resolvePort, writeProxyState } from '../lib/state.ts'
@@ -64,10 +64,8 @@ async function proxyStart(name: string): Promise<void> {
   const state = readProxyState(name)
   const p = getProxyPaths(name)
 
-  if (state.pid !== null && isPidAlive(state.pid)) {
-    console.log(
-      `${c.GREEN}✓${c.RESET} ${c.CYAN}${name}${c.RESET} ${c.DIM}·${c.RESET} ${c.DIM}http://127.0.0.1:${state.port}${c.RESET} ${c.DIM}·${c.RESET} ${c.GREEN}代理运行中${c.RESET} ${c.DIM}(PID ${state.pid})${c.RESET}`,
-    )
+  if (state.pid !== null && state.port !== null && isPidAlive(state.pid)) {
+    proxyStatus(name, state.port, state.pid, '代理运行中')
     return
   }
 
@@ -88,9 +86,7 @@ async function proxyStart(name: string): Promise<void> {
     console.log()
 
     if (portResult.ready) {
-      console.log(
-        `${c.GREEN}✓${c.RESET} ${c.CYAN}${name}${c.RESET} ${c.DIM}·${c.RESET} ${c.DIM}http://127.0.0.1:${port}${c.RESET} ${c.DIM}·${c.RESET} ${c.GREEN}代理已就绪${c.RESET} ${c.DIM}(PID ${result.pid})${c.RESET}`,
-      )
+      proxyStatus(name, port, result.pid, '代理已就绪')
     } else {
       warn(`${name} 未响应端口 ${port}（等待超时 10s）`)
       dim(`查看日志：${result.logFile}`)
@@ -132,10 +128,8 @@ async function proxyUse(name: string): Promise<void> {
     return
   }
 
-  if (state.pid !== null && isPidAlive(state.pid)) {
-    console.log(
-      `${c.GREEN}✓${c.RESET} ${c.CYAN}${name}${c.RESET} ${c.DIM}·${c.RESET} ${c.DIM}http://127.0.0.1:${state.port}${c.RESET} ${c.DIM}·${c.RESET} ${c.GREEN}代理运行中${c.RESET} ${c.DIM}(PID ${state.pid})${c.RESET}`,
-    )
+  if (state.pid !== null && state.port !== null && isPidAlive(state.pid)) {
+    proxyStatus(name, state.port, state.pid, '代理运行中')
     return
   }
 
