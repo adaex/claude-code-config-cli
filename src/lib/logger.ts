@@ -30,7 +30,7 @@ export function dim(msg: string): void {
   console.log(`  ${DIM}${msg}${RESET}`)
 }
 
-export function proxyStatus(name: string, port: number, pid: number, label: string): void {
+export function proxyStatus(name: string, port: number, pid: number, label: '代理运行中' | '代理已就绪'): void {
   console.log(
     `${GREEN}✓${RESET} ${CYAN}${name}${RESET} ${DIM}·${RESET} ${DIM}http://127.0.0.1:${port}${RESET} ${DIM}·${RESET} ${GREEN}${label}${RESET} ${DIM}(PID ${pid})${RESET}`,
   )
