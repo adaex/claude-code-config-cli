@@ -35,7 +35,7 @@ dist/                   tsup 构建输出（gitignored）
     start.sh
     config.yaml
   backups/
-    ccc-<时间戳>.zip        # ccc backup 生成（proxies + *.zsh，排除隐藏文件）
+    ccc-backup-<时间戳>.zip        # ccc backup 生成（proxies + *.zsh，排除隐藏文件）
   *.zsh                     # shell 配置函数
   runtime/                  # 运行时数据（可安全删除重建）
     litellm/                # 共享 LiteLLM 运行时
@@ -64,12 +64,14 @@ ccc --version                # 显示版本号
 ## 代理管理流程
 
 ### install-litellm
+
 1. 创建 `~/.ccc/runtime/litellm/` 目录
 2. 生成 `install.sh`（uv venv + uv pip install litellm[proxy] httpx[socks]）
 3. 执行 `install.sh`
 4. 验证 `litellm` 可执行文件存在
 
 ### start
+
 1. 检查共享 LiteLLM 是否已安装
 2. 若已运行则显示状态并退出
 3. 从 `ANTHROPIC_BASE_URL` 环境变量解析端口（非本地地址则报错退出）
@@ -78,11 +80,13 @@ ccc --version                # 显示版本号
 6. `net.createConnection` 轮询端口，最多 10s
 
 ### stop
+
 1. 读取 `~/.ccc/runtime/proxy-<名称>/state.json` 获取 PID
 2. SIGTERM → 3×500ms 轮询 → SIGKILL → 3×200ms 轮询
 3. 更新 state
 
 ### use
+
 1. 检查共享 LiteLLM 是否已安装
 2. 已运行：显示状态行
 3. 未运行：自动重启（同 start 流程）
@@ -101,9 +105,9 @@ ccc --version                # 显示版本号
 
 ```yaml
 model_list:
-  - model_name: <claude 侧模型名>      # claude --model 使用的名称
+  - model_name: <claude 侧模型名> # claude --model 使用的名称
     litellm_params:
-      model: <上游模型名>               # 转发到上游的实际模型 ID
+      model: <上游模型名> # 转发到上游的实际模型 ID
       api_key: os.environ/COCO_JWT
       api_base: https://codebase-api.byted.org/v2/api/2022-06-01/LLMProxy/Model
     model_info:
@@ -117,7 +121,8 @@ litellm_settings:
 ```
 
 两种映射风格：
-- **别名映射**（如 openrouter-1）：model_name 用 `claude-opus-4-6` / `claude-sonnet-4-6`，model 用上游名。适合需要伪装为 Claude 模型的场景。
+
+- **别名映射**（如 openrouter-o）：model_name 用 `claude-opus-4-7` / `claude-sonnet-4-6`，model 用上游名。适合需要伪装为 Claude 模型的场景。
 - **直通映射**（如 trae-cli）：model_name 和 model 都用上游自己的 ID（如 `gpt-5.4`）。适合不需要映射 Claude 模型名的场景。
 
 **start.sh** — 启动脚本（仅需改 PORT）：
@@ -173,6 +178,7 @@ cc-<快捷名>() {
 ```
 
 **注意事项：**
+
 - Anthropic SDK 会自动在 `ANTHROPIC_BASE_URL` 后拼接 `/v1/messages`，所以 BASE_URL **不能**包含 `/v1`
 - SDK 通过 `x-api-key` header 发送 `ANTHROPIC_AUTH_TOKEN`。若上游只认 query param（`?ak=xxx`），需确认上游同时支持 `x-api-key` header 认证（通常都支持），因为 SDK URL join 会丢弃 query param
 
@@ -181,11 +187,22 @@ cc-<快捷名>() {
 | 代理 | 端口 |
 |------|------|
 | test-new-cli | 15432 |
-| openrouter-1 | 15433 |
+| openrouter-o | 15433 |
 | trae-cli | 15434 |
 | model-hub | 15435 |
 
 新代理从 15436 递增。
+
+### openrouter 代理命名与升级规则
+
+上游模型版本号跟随 Opus 小版本递增（如 opus-4-7 对应 openrouter-2o，opus-4-8 对应 openrouter-3o）。代理名固定为 `openrouter-o`，升级时只需更新配置。
+
+升级时需同步修改：
+
+1. `~/.ccc/proxies/openrouter-o/config.yaml` — 添加新模型映射条目
+2. `~/.ccc/claude.zsh` — 注释、`ANTHROPIC_DEFAULT_OPUS_MODEL` 更新
+3. `CLAUDE.md` — 别名映射示例中的模型版本
+4. 重启代理：`ccc proxy stop openrouter-o && ccc proxy start openrouter-o`
 
 ## 开发说明
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.2] - 2026-04-22
+
+### Changed
+- `ccc backup` 文件名改为 `ccc-backup-<本地时间>.zip`，使用本地时区、去掉秒
+- openrouter 代理从 `openrouter-1` 重命名为 `openrouter-o`，文档同步更新
+
 ## [1.6.1] - 2026-04-20
 
 ### Changed

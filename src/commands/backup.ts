@@ -43,8 +43,9 @@ export function cmdBackup(_ctx: CommandContext): void {
   const backupsDir = path.join(cccDir, 'backups')
   fs.mkdirSync(backupsDir, { recursive: true })
 
-  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-  const zipPath = path.join(backupsDir, `ccc-${ts}.zip`)
+  const now = new Date()
+  const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`
+  const zipPath = path.join(backupsDir, `ccc-backup-${ts}.zip`)
 
   const tmpDir = path.join(cccDir, 'runtime', `backup-${ts}`)
   fs.mkdirSync(tmpDir, { recursive: true })
