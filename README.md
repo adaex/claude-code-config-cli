@@ -1,18 +1,20 @@
-# ccc — Claude Code Config CLI
+# ccc — Code Config CLI
 
-Claude Code 本地代理生命周期管理工具。
+Claude Code / Codex 等 coding agent CLI 的本地代理生命周期管理工具。
 
 ## 安装
 
 ```bash
-npm install -g claude-code-config-cli
+npm install -g code-config-cli
 ```
+
+安装后会同时注册两个命令：`ccc`（短名，日常使用）和 `code-config-cli`（全名，避免冲突时使用）。
 
 或从源码安装：
 
 ```bash
-git clone git@github.com:adaex/claude-code-config-cli.git
-cd claude-code-config-cli
+git clone git@github.com:adaex/code-config-cli.git
+cd code-config-cli
 npm link
 ```
 

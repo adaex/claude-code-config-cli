@@ -1,6 +1,11 @@
-# claude-code-config-cli (ccc)
+# code-config-cli (ccc)
 
-零运行时依赖的 TypeScript CLI，管理 Claude Code 本地代理生命周期。
+零运行时依赖的 TypeScript CLI，管理 Claude Code / Codex 等 coding agent CLI 的本地代理生命周期。
+
+安装后会注册两个命令：
+
+- `ccc` — 短名，日常使用
+- `code-config-cli` — 全名，避免与其他工具冲突时使用
 
 ## 项目结构
 

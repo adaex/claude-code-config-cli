@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.7.0] - 2026-04-28
+
+### Changed
+- **重命名**：npm 包从 `claude-code-config-cli` 重命名为 `code-config-cli`，GitHub repo 同步重命名。原因：工具已不仅服务于 Claude Code，Codex 等其他 coding agent CLI 也在使用
+- `bin` 新增 `code-config-cli` 入口，与 `ccc` 指向同一可执行文件；`ccc` 仍是推荐的日常命令
+
+### 迁移
+- 旧版用户需先卸载：`npm uninstall -g claude-code-config-cli`
+- 再安装新版：`npm install -g code-config-cli`
+- GitHub 旧 URL 会 301 跳转，git remote 建议手动更新为新地址
+
 ## [1.6.3] - 2026-04-25
 
 ### Changed
