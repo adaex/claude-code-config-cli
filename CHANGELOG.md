@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.9.0] - 2026-05-02
+
+### Changed
+- `ccc doctor` 诊断所有运行中的代理（按端口从小到大），无运行代理时 fallback 到端口最小的
+- `ccc doctor` 模型测试扩展为三种 API 格式：`/v1/messages`、`/v1/chat/completions`、`/v1/responses`
+- 模型级别判定：任一格式通过即为通过
+- 正确识别 HTTP 200 但 body 含 error 的情况（LiteLLM 的 code 200 错误响应）
+- 移除模型全部失败时自动重启重试逻辑
+
 ## [1.8.0] - 2026-05-02
 
 ### Added

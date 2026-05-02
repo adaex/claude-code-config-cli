@@ -17,28 +17,37 @@ export async function cmdDoctor(ctx: CommandContext): Promise<void> {
     return
   }
 
-  let target: string | undefined = ctx.args[0]
-
-  if (!target) {
-    const states = new Map(names.map((n) => [n, readProxyState(n)] as const))
-    for (const [name, state] of states) {
-      if (state.pid !== null && isPidAlive(state.pid)) {
-        target = name
-        break
-      }
+  const explicit = ctx.args[0]
+  if (explicit) {
+    if (!names.includes(explicit)) {
+      error(`未知代理：${explicit}`)
+      dim(`可用代理：${names.join(', ')}`)
+      return
     }
-    if (!target) {
-      target = names.map((n) => ({ name: n, port: states.get(n)!.port ?? Number.MAX_SAFE_INTEGER })).sort((a, b) => a.port - b.port)[0]!.name
-    }
-  }
-
-  if (!names.includes(target)) {
-    error(`未知代理：${target}`)
-    dim(`可用代理：${names.join(', ')}`)
+    await diagnoseProxy(explicit)
     return
   }
 
-  await diagnoseProxy(target)
+  const states = new Map(names.map((n) => [n, readProxyState(n)] as const))
+  const byPort = (n: string) => states.get(n)!.port ?? Number.MAX_SAFE_INTEGER
+
+  const running = names
+    .filter((n) => {
+      const s = states.get(n)!
+      return s.pid !== null && isPidAlive(s.pid)
+    })
+    .sort((a, b) => byPort(a) - byPort(b))
+
+  if (running.length > 0) {
+    for (const name of running) {
+      await diagnoseProxy(name)
+      if (name !== running[running.length - 1]) console.log()
+    }
+    return
+  }
+
+  const fallback = names.map((n) => ({ name: n, port: byPort(n) })).sort((a, b) => a.port - b.port)[0]!.name
+  await diagnoseProxy(fallback)
 }
 
 async function diagnoseProxy(proxyName: string): Promise<void> {
@@ -85,17 +94,7 @@ async function diagnoseProxy(proxyName: string): Promise<void> {
   }
 
   console.log()
-  const modelResult = await testModels(proc.port, models)
-
-  if (modelResult === 'all-fail' && proxyUrl) {
-    console.log()
-    info('上游通过代理可达但模型全部失败，尝试重启代理…')
-    const restarted = await withProxyEnv(proxyUrl, () => restartProxy(proxyName, proc.state))
-    if (restarted) {
-      console.log()
-      await testModels(restarted.port, models)
-    }
-  }
+  await testModels(proc.port, models)
 }
 
 async function withProxyEnv<T>(proxyUrl: string | null, fn: () => Promise<T>): Promise<T> {
@@ -193,67 +192,110 @@ async function checkProxyProcess(proxyName: string): Promise<{ alive: boolean; p
   return { alive: true, port: state.port, state }
 }
 
+type ApiPath = '/v1/messages' | '/v1/chat/completions' | '/v1/responses'
+type FormatResult = { path: ApiPath; ok: true; input: number | string; output: number | string; text: string } | { path: ApiPath; ok: false; err: string }
+
+const TEST_KEY = 'sk-doctor-test'
+const chatBody = (model: string) => JSON.stringify({ model, max_tokens: 50, messages: [{ role: 'user', content: 'hi' }] })
+
+const API_FORMATS: ReadonlyArray<{
+  path: ApiPath
+  headers: Record<string, string>
+  buildBody: (model: string) => string
+  parse: (data: Record<string, unknown>) => { input: number | string; output: number | string; text: string }
+}> = [
+  {
+    path: '/v1/messages',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': TEST_KEY, 'anthropic-version': '2023-06-01' },
+    buildBody: chatBody,
+    parse: (d) => {
+      const usage = d.usage as { input_tokens?: number; output_tokens?: number } | undefined
+      const content = d.content as Array<{ text?: string }> | undefined
+      return { input: usage?.input_tokens ?? '?', output: usage?.output_tokens ?? '?', text: content?.[0]?.text ?? '' }
+    },
+  },
+  {
+    path: '/v1/chat/completions',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TEST_KEY}` },
+    buildBody: chatBody,
+    parse: (d) => {
+      const usage = d.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined
+      const choices = d.choices as Array<{ message?: { content?: string } }> | undefined
+      return { input: usage?.prompt_tokens ?? '?', output: usage?.completion_tokens ?? '?', text: choices?.[0]?.message?.content ?? '' }
+    },
+  },
+  {
+    path: '/v1/responses',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TEST_KEY}` },
+    buildBody: (model) => JSON.stringify({ model, input: 'hi', max_output_tokens: 50 }),
+    parse: (d) => {
+      const usage = d.usage as { input_tokens?: number; output_tokens?: number } | undefined
+      const outputText = d.output_text as string | undefined
+      const output = d.output as Array<{ content?: Array<{ text?: string }> }> | undefined
+      const text = outputText ?? output?.[0]?.content?.[0]?.text ?? ''
+      return { input: usage?.input_tokens ?? '?', output: usage?.output_tokens ?? '?', text }
+    },
+  },
+]
+
+async function testOneFormat(port: number, modelName: string, fmt: (typeof API_FORMATS)[number]): Promise<FormatResult> {
+  try {
+    const resp = await httpRequest({
+      method: 'POST',
+      url: `http://127.0.0.1:${port}${fmt.path}`,
+      headers: fmt.headers,
+      body: fmt.buildBody(modelName),
+      timeoutMs: 30000,
+    })
+    let data: Record<string, unknown> | undefined
+    try {
+      data = JSON.parse(resp.body) as Record<string, unknown>
+    } catch {}
+
+    if (data?.error) {
+      const err = data.error as { message?: string }
+      return { path: fmt.path, ok: false, err: err.message ?? `HTTP ${resp.statusCode}` }
+    }
+
+    if (resp.statusCode >= 200 && resp.statusCode < 300 && data) {
+      return { path: fmt.path, ok: true, ...fmt.parse(data) }
+    }
+    return { path: fmt.path, ok: false, err: `HTTP ${resp.statusCode}` }
+  } catch (e: unknown) {
+    return { path: fmt.path, ok: false, err: e instanceof Error ? e.message : String(e) }
+  }
+}
+
 async function testModels(port: number, models: Array<{ modelName: string; apiBase: string }>): Promise<'all-pass' | 'all-fail' | 'partial'> {
   info('测试模型对话…')
-  const failures: Array<{ model: string; err: string }> = []
 
-  const results = await Promise.all(
+  const modelResults = await Promise.all(
     models.map(async (model) => {
-      const body = JSON.stringify({
-        model: model.modelName,
-        max_tokens: 50,
-        messages: [{ role: 'user', content: 'hi' }],
-      })
-
-      try {
-        const resp = await httpRequest({
-          method: 'POST',
-          url: `http://127.0.0.1:${port}/v1/messages`,
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': 'sk-doctor-test',
-            'anthropic-version': '2023-06-01',
-          },
-          body,
-          timeoutMs: 30000,
-        })
-
-        if (resp.statusCode >= 200 && resp.statusCode < 300) {
-          const data = JSON.parse(resp.body) as {
-            usage?: { input_tokens?: number; output_tokens?: number }
-            content?: Array<{ text?: string }>
-          }
-          return { model: model.modelName, ok: true as const, data }
-        }
-        let errMsg = `HTTP ${resp.statusCode}`
-        try {
-          const parsed = JSON.parse(resp.body) as { error?: { message?: string } }
-          if (parsed.error?.message) errMsg = parsed.error.message
-        } catch {}
-        return { model: model.modelName, ok: false as const, err: errMsg }
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e)
-        return { model: model.modelName, ok: false as const, err: msg }
-      }
+      const formats = await Promise.all(API_FORMATS.map((fmt) => testOneFormat(port, model.modelName, fmt)))
+      return { modelName: model.modelName, formats }
     }),
   )
 
   let passCount = 0
   let failCount = 0
 
-  for (const r of results) {
-    if (r.ok) {
-      const input = r.data.usage?.input_tokens ?? '?'
-      const output = r.data.usage?.output_tokens ?? '?'
-      const text = r.data.content?.[0]?.text ?? ''
-      const preview = text.length > 100 ? `${text.slice(0, 100)}…` : text
-      success(`${r.model} (↑${input} ↓${output} tokens)`)
-      dim(`"hi" → "${preview}"`)
+  for (const mr of modelResults) {
+    const anyPass = mr.formats.some((f) => f.ok)
+    if (anyPass) {
+      success(mr.modelName)
       passCount++
     } else {
-      error(`${r.model} — ${r.err}`)
-      failures.push({ model: r.model, err: r.err })
+      error(mr.modelName)
       failCount++
+    }
+
+    for (const f of mr.formats) {
+      if (f.ok) {
+        const preview = f.text.length > 80 ? `${f.text.slice(0, 80)}…` : f.text
+        dim(`  ${f.path.padEnd(22)} ${c.GREEN}✓${c.RESET} (↑${f.input} ↓${f.output} tokens) "${preview}"`)
+      } else {
+        dim(`  ${f.path.padEnd(22)} ${c.RED}✗${c.RESET} ${f.err}`)
+      }
     }
   }
 
@@ -261,14 +303,13 @@ async function testModels(port: number, models: Array<{ modelName: string; apiBa
   if (failCount === 0) {
     success(`全部 ${passCount} 个模型测试通过`)
     return 'all-pass'
-  } else if (passCount === 0) {
-    error(`全部 ${failCount} 个模型测试失败`)
-    if (failures.length > 0) dim(`错误详情：${failures[0]!.err}`)
-    return 'all-fail'
-  } else {
-    warn(`${passCount} 个通过，${failCount} 个失败`)
-    return 'partial'
   }
+  if (passCount === 0) {
+    error(`全部 ${failCount} 个模型测试失败`)
+    return 'all-fail'
+  }
+  warn(`${passCount} 个通过，${failCount} 个失败`)
+  return 'partial'
 }
 
 async function restartProxy(proxyName: string, state: ProxyState): Promise<{ port: number } | null> {
