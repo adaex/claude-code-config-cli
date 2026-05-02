@@ -1,6 +1,6 @@
 {
   "name": "code-config-cli",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Claude Code / Codex 等 coding agent CLI 的本地代理生命周期管理工具",
   "keywords": [
     "claude",

@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.8.0] - 2026-05-02
+
+### Added
+- `ccc doctor [名称]` — 分层诊断代理网络与模型可用性
+  - 上游 TCP 连通性检测：直连 → 系统代理 → 默认代理（7890/7891）
+  - mihomo 管理 API 节点检查
+  - 代理进程未运行时自动启动（需要代理时自动设置 `HTTPS_PROXY`）
+  - 模型对话并行测试，显示输入输出和 token 统计
+  - 模型全部失败时自动重启代理并重试
+- `ccc stop` — 停止所有代理（等同 `ccc proxy stop --all`）
+
+### Changed
+- `tryConnect` 统一为 `tcpConnect`，消除重复的 TCP 连接实现
+
 ## [1.7.0] - 2026-04-28
 
 ### Changed
