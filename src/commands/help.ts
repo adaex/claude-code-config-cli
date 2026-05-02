@@ -10,6 +10,8 @@ export function cmdHelp(_ctx: CommandContext): void {
   proxy stop [名称]      停止代理
   proxy status           显示所有代理状态
   proxy install-litellm  安装共享 LiteLLM 依赖
+  doctor [名称]          诊断代理网络与模型可用性
+  stop                   停止所有代理（等同 proxy stop --all）
   backup                 备份代理配置（排除 .venv）
   open                   打开 ~/.ccc 目录
   update                 从 npm 更新到最新版本

@@ -131,7 +131,7 @@ async function proxyStop(name: string): Promise<void> {
   }
 }
 
-async function proxyStopAll(): Promise<void> {
+export async function proxyStopAll(): Promise<void> {
   const names = listProxyNames()
   const running = names.filter((n) => {
     const s = readProxyState(n)
