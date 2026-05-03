@@ -4,7 +4,29 @@ import type { ProxyState } from '../types.ts'
 import { error } from './logger.ts'
 import { getProxyPaths } from './paths.ts'
 
-/** 从 ANTHROPIC_BASE_URL 环境变量解析本地代理端口，非本地地址返回 null */
+/**
+ * 从代理 start.sh 解析端口，按优先级尝试：
+ * 1. PORT=${PORT:-<端口>} / PORT="${PORT:-<端口>}"
+ * 2. PORT=<端口>
+ * 3. --port <端口>（litellm 命令行）
+ */
+export function resolvePort(proxyName: string): number | null {
+  const { startSh } = getProxyPaths(proxyName)
+  try {
+    const content = fs.readFileSync(startSh, 'utf8')
+    const m = content.match(/PORT="?\$\{PORT:-(\d+)\}"?/) || content.match(/^PORT=(\d+)$/m) || content.match(/^[^#]*--port\s+"?(\d+)"?/m)
+    if (!m?.[1]) {
+      error(`无法从 ${startSh} 解析端口`)
+      return null
+    }
+    return Number.parseInt(m[1], 10)
+  } catch {
+    error(`无法读取 ${startSh}`)
+    return null
+  }
+}
+
+/** 从 ANTHROPIC_BASE_URL 环境变量解析端口，用于校验 */
 export function resolvePortFromEnv(): number | null {
   const url = process.env.ANTHROPIC_BASE_URL
   if (!url) return null
@@ -18,19 +40,6 @@ export function resolvePortFromEnv(): number | null {
   } catch {
     return null
   }
-}
-
-/** 从 state 或环境变量解析端口，失败时输出错误信息并返回 null */
-export function resolvePort(state: ProxyState): number | null {
-  const port = state.port ?? resolvePortFromEnv()
-  if (port) return port
-  const url = process.env.ANTHROPIC_BASE_URL
-  if (!url) {
-    error('未设置 ANTHROPIC_BASE_URL，无法确定代理端口')
-  } else {
-    error(`ANTHROPIC_BASE_URL 不是本地地址或未指定端口：${url}`)
-  }
-  return null
 }
 
 /** 读取代理运行时状态，文件不存在或解析失败时返回默认值 */

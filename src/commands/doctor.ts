@@ -17,14 +17,15 @@ export async function cmdDoctor(ctx: CommandContext): Promise<void> {
     return
   }
 
-  const explicit = ctx.args[0]
+  const testAll = ctx.args.includes('--all') || ctx.args.includes('-a')
+  const explicit = ctx.args.find((a) => !a.startsWith('-'))
   if (explicit) {
     if (!names.includes(explicit)) {
       error(`未知代理：${explicit}`)
       dim(`可用代理：${names.join(', ')}`)
       return
     }
-    await diagnoseProxy(explicit)
+    await diagnoseProxy(explicit, testAll)
     return
   }
 
@@ -40,17 +41,17 @@ export async function cmdDoctor(ctx: CommandContext): Promise<void> {
 
   if (running.length > 0) {
     for (const name of running) {
-      await diagnoseProxy(name)
+      await diagnoseProxy(name, testAll)
       if (name !== running[running.length - 1]) console.log()
     }
     return
   }
 
   const fallback = names.map((n) => ({ name: n, port: byPort(n) })).sort((a, b) => a.port - b.port)[0]!.name
-  await diagnoseProxy(fallback)
+  await diagnoseProxy(fallback, testAll)
 }
 
-async function diagnoseProxy(proxyName: string): Promise<void> {
+async function diagnoseProxy(proxyName: string, testAll: boolean): Promise<void> {
   info(`诊断代理：${c.CYAN}${proxyName}${c.RESET}`)
   console.log()
 
@@ -89,12 +90,12 @@ async function diagnoseProxy(proxyName: string): Promise<void> {
     if (!started) return
 
     console.log()
-    await testModels(started.port, models)
+    await testModels(started.port, models, testAll)
     return
   }
 
   console.log()
-  await testModels(proc.port, models)
+  await testModels(proc.port, models, testAll)
 }
 
 async function withProxyEnv<T>(proxyUrl: string | null, fn: () => Promise<T>): Promise<T> {
@@ -266,12 +267,18 @@ async function testOneFormat(port: number, modelName: string, fmt: (typeof API_F
   }
 }
 
-async function testModels(port: number, models: Array<{ modelName: string; apiBase: string }>): Promise<'all-pass' | 'all-fail' | 'partial'> {
+function getFormatsForModel(modelName: string, testAll: boolean) {
+  if (testAll) return API_FORMATS
+  if (modelName.startsWith('gpt-')) return API_FORMATS.filter((f) => f.path === '/v1/chat/completions')
+  return API_FORMATS.filter((f) => f.path === '/v1/messages')
+}
+
+async function testModels(port: number, models: Array<{ modelName: string; apiBase: string }>, testAll: boolean): Promise<'all-pass' | 'all-fail' | 'partial'> {
   info('测试模型对话…')
 
   const modelResults = await Promise.all(
     models.map(async (model) => {
-      const formats = await Promise.all(API_FORMATS.map((fmt) => testOneFormat(port, model.modelName, fmt)))
+      const formats = await Promise.all(getFormatsForModel(model.modelName, testAll).map((fmt) => testOneFormat(port, model.modelName, fmt)))
       return { modelName: model.modelName, formats }
     }),
   )
@@ -325,7 +332,7 @@ async function restartProxy(proxyName: string, state: ProxyState): Promise<{ por
     }
   }
 
-  const port = resolvePort(state)
+  const port = resolvePort(proxyName)
   if (!port) return null
 
   if (!isLiteLLMInstalled()) {

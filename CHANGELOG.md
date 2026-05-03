@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.10.0] - 2026-05-03
+
+### Changed
+- 端口解析改为从代理 `start.sh` 读取，不再依赖 `ANTHROPIC_BASE_URL` 环境变量
+  - 兼容三种格式：`PORT=${PORT:-<端口>}`、`PORT=<端口>`、`--port <端口>`
+- `ccc proxy use` 启动后校验 `ANTHROPIC_BASE_URL` 端口与代理端口是否一致，不一致时警告
+- `ccc doctor` 模型测试按模型类型选择 API 格式：`gpt-*` 测 OpenAI，其余测 Anthropic
+- `ccc doctor --all` / `-a` 测试全部三种 API 格式
+
 ## [1.9.0] - 2026-05-02
 
 ### Changed

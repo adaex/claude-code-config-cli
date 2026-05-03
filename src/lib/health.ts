@@ -17,7 +17,7 @@ export async function ensureProxy(proxyName: string): Promise<EnsureProxyResult 
   const state = readProxyState(proxyName)
   if (state.pid !== null && isPidAlive(state.pid)) return null
 
-  const port = resolvePort(state)
+  const port = resolvePort(proxyName)
   if (!port) return null
 
   if (!isLiteLLMInstalled()) {

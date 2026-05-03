@@ -4,8 +4,15 @@ import { ensureProxy } from '../lib/health.ts'
 import { c, dim, error, info, proxyStatus, showLogTail, success, warn } from '../lib/logger.ts'
 import { ensureLiteLLMDirs, getLiteLLMPaths, getProxyPaths, isLiteLLMInstalled, listProxyNames } from '../lib/paths.ts'
 import { ProxyStartError, startProxy, stopProxy, waitForPort } from '../lib/proxy.ts'
-import { isPidAlive, readProxyState, resolvePort, writeProxyState } from '../lib/state.ts'
+import { isPidAlive, readProxyState, resolvePort, resolvePortFromEnv, writeProxyState } from '../lib/state.ts'
 import type { CommandContext } from '../types.ts'
+
+function warnPortMismatch(proxyName: string, proxyPort: number): void {
+  const envPort = resolvePortFromEnv()
+  if (envPort !== null && envPort !== proxyPort) {
+    warn(`ANTHROPIC_BASE_URL 端口 ${envPort} 与 ${proxyName} 端口 ${proxyPort} 不一致`)
+  }
+}
 
 function resolveProxyName(name: string | undefined): string {
   if (!name) {
@@ -82,7 +89,7 @@ async function proxyStart(name: string): Promise<void> {
     process.exit(1)
   }
 
-  const port = resolvePort(state)
+  const port = resolvePort(name)
   if (!port) process.exit(1)
 
   try {
@@ -151,10 +158,12 @@ async function proxyUse(name: string): Promise<void> {
 
   if (state.pid !== null && state.port !== null && isPidAlive(state.pid)) {
     proxyStatus(name, state.port, state.pid, '代理运行中')
+    warnPortMismatch(name, state.port)
     return
   }
 
-  await ensureProxy(name)
+  const result = await ensureProxy(name)
+  if (result) warnPortMismatch(name, result.port)
 }
 
 async function proxyStatusAll(): Promise<void> {
